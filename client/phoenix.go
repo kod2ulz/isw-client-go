@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	_http "net/http"
 	"net/url"
 
 	"github.com/kod2ulz/gostart/api"
@@ -182,36 +181,20 @@ type Request interface {
 	Headers(ctx context.Context, names ...string) (out map[string]string)
 }
 
-type PhxResponse map[string]any
+type PhoenixResponse map[string]any
 
 func RawRequest[P Request, R any](p *Phoenix, ctx context.Context, req P, method, path string) (out R, er api.Error) {
 	var err error
-	var res api.Response[PhxResponse]
+	var res api.Response[PhoenixResponse]
 	var call dbi.InterswitchApiCall
-	var resData PhxResponse
+	var resData PhoenixResponse
 	var headers = req.Headers(ctx, api.RequestID)
-	// headers["Content-Type"] = "application/json"
-	// headers["content-type"] = "application/json"
-	logHeaders := collections.ConvertMap(headers, func(k, v string) (string, []string) {
-		return k, []string{v}
-	})
+	logHeaders := collections.ConvertMap(headers, func(k, v string) (string, []string) { return k, []string{v} })
 	if call, err = p.log.Request(ctx, method, fmt.Sprintf("%s/%s", p.conf.Host, path), req, logHeaders); err != nil {
 		return api.SqlQueryError(req, out, err)
 	}
-	client := http.Client[PhxResponse](p.log.Entry).BaseUrl(p.conf.Host).Headers(headers).Body(req)
-	switch method {
-	case _http.MethodPost:
-		res = client.Post(ctx, path)
-	case _http.MethodGet:
-		res = client.Get(ctx, path)
-	case _http.MethodPut:
-		res = client.Put(ctx, path)
-	case _http.MethodDelete:
-		res = client.Delete(ctx, path)
-	default:
-		return out, api.ServiceError(errors.Errorf("unsupported method %s", method))
-	}
-	if res.HasError() {
+	client := http.Client[PhoenixResponse](p.log.Entry).BaseUrl(p.conf.Host).Headers(headers).Body(req)
+	if res = client.Request(ctx, method, path); res.HasError() {
 		p.log.Response(ctx, call.RequestID, res.Code(), res.Error, res.Headers(), res.Cookies())
 		return out, res.Error
 	} else if err = res.ParseDataTo(&resData); err != nil {
@@ -220,7 +203,8 @@ func RawRequest[P Request, R any](p *Phoenix, ctx context.Context, req P, method
 	if _, err = p.log.Response(ctx, call.RequestID, res.Code(), res.Data, res.Headers(), res.Cookies()); err != nil {
 		p.log.WithError(err).WithField("res", res).Error("failed to log response to db")
 	}
-	utils.StructCopy(resData, &out)
+	//todo: read response for errors before setting this
+	utils.StructCopy(resData, &out) 
 	return
 }
 

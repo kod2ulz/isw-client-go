@@ -9,7 +9,6 @@ require (
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/oauth2 v0.13.0
 )
 
 require (
@@ -67,11 +66,9 @@ require (
 )
 
 require (
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/kod2ulz/gostart v0.0.0-20231021212401-0a6aaef6b83e
 	github.com/minio/minio-go/v7 v7.0.63
 	golang.org/x/net v0.16.0 // indirect
 	golang.org/x/sync v0.4.0
-	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
