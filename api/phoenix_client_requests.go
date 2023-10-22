@@ -41,8 +41,8 @@ func (r *ClientRegistrationRequest) LoadPhoenixParams(phoenix *client.Phoenix) (
 	r.TerminalId = conf.TerminalID
 	r.PhoneNumber = conf.PhoneNumber
 	r.OwnerPhoneNumber = conf.PhoneNumber
-	r.PublicKey = phoenix.RsaPublic64()
-	r.ClientSessionPublicKey = phoenix.EcdhPublic64()
+	r.PublicKey = phoenix.Rsa().Public().Base64()
+	r.ClientSessionPublicKey = phoenix.Ecdh().Public().Base64()
 	return
 }
 

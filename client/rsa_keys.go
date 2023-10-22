@@ -2,7 +2,6 @@ package client
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,23 +15,24 @@ import (
 const (
 	RsaMinBits        = 2048
 	RsaPrivateKeyType = "RSA PRIVATE KEY"
+	RsaPublicKeyType  = "RSA PUBLIC KEY"
 )
 
 type RsaPrivateKey struct {
 	val *rsa.PrivateKey
 }
 
-func (k *RsaPrivateKey) Public() crypto.PublicKey {
-	return k.val.Public()
+func (k *RsaPrivateKey) Public() Key {
+	return &RsaPublicKey{private: k}
 }
 
-func (k *RsaPrivateKey) PublicBase64() string {
-	byts := x509.MarshalPKCS1PublicKey(&k.val.PublicKey)
+func (k *RsaPrivateKey) Base64() string {
+	byts := x509.MarshalPKCS1PrivateKey(k.val)
 	return base64.StdEncoding.EncodeToString(byts)
 }
 
 func (k *RsaPrivateKey) Pem() (out []byte) {
-	pemBytes := &bytes.Buffer{}
+	pemBytes := new(bytes.Buffer)
 	if err := pem.Encode(pemBytes, &pem.Block{
 		Bytes: x509.MarshalPKCS1PrivateKey(k.val),
 		Type:  RsaPrivateKeyType,
@@ -42,16 +42,47 @@ func (k *RsaPrivateKey) Pem() (out []byte) {
 	return pemBytes.Bytes()
 }
 
-func GenerateRsaKey(bitSize int) (out *RsaPrivateKey, err error) {
-	if bitSize < RsaMinBits {
-		return nil, errors.Errorf("insufficient rsa bit size %d", bitSize)
+type RsaPublicKey struct {
+	private *RsaPrivateKey
+}
+
+func (k *RsaPublicKey) Pem() (out []byte) {
+	pemBytes := new(bytes.Buffer)
+	if err := pem.Encode(pemBytes, &pem.Block{
+		Bytes: x509.MarshalPKCS1PublicKey(&k.private.val.PublicKey),
+		Type:  RsaPublicKeyType,
+	}); err != nil {
+		return nil
+	}
+	return pemBytes.Bytes()
+}
+
+func (k *RsaPublicKey) Base64() string {
+	byts := x509.MarshalPKCS1PublicKey(&k.private.val.PublicKey)
+	return base64.StdEncoding.EncodeToString(byts)
+}
+
+func (k *RsaPublicKey) Public() Key {
+	return k
+}
+
+type rsaUtils struct{}
+
+func (rsaUtils) Generate(bitSize ...int) (out *RsaPrivateKey, err error) {
+	_bitSize := RsaMinBits
+	if len(bitSize) > 0 {
+		if bitSize[0] < RsaMinBits {
+			return nil, errors.Errorf("insufficient rsa bit size %d", bitSize)
+		} else {
+			_bitSize = bitSize[0]
+		}
 	}
 	out = &RsaPrivateKey{}
-	out.val, err = rsa.GenerateKey(rand.Reader, bitSize)
+	out.val, err = rsa.GenerateKey(rand.Reader, _bitSize)
 	return
 }
 
-func RsaPemDecode(reader io.Reader) (out *RsaPrivateKey, err error) {
+func (rsaUtils) DecodePem(reader io.Reader) (out *RsaPrivateKey, err error) {
 	var ok bool
 	var privPemBytes []byte
 	var parsedKey interface{}

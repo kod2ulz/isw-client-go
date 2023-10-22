@@ -2,7 +2,6 @@ package client
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -17,14 +16,15 @@ import (
 var (
 	EcdhCurve          = elliptic.P256()
 	EcdhPrivateKeyType = "EC PRIVATE KEY"
+	EcdhPublicKeyType  = "PUBLIC KEY"
 )
 
 type EcdhPrivateKey struct {
 	val *ecdsa.PrivateKey
 }
 
-func (k *EcdhPrivateKey) Public() crypto.PublicKey {
-	return k.val.Public()
+func (k *EcdhPrivateKey) Public() Key {
+	return &EcdhPublicKey{private: k}
 }
 
 func (k *EcdhPrivateKey) PublicBase64() string {
@@ -33,12 +33,19 @@ func (k *EcdhPrivateKey) PublicBase64() string {
 	return base64.StdEncoding.EncodeToString(byts)
 }
 
+func (k *EcdhPrivateKey) Base64() (out string) {
+	if ky, err := k.val.ECDH(); err == nil {
+		return base64.StdEncoding.EncodeToString(ky.Bytes())
+	}
+	return
+}
+
 func (k *EcdhPrivateKey) Pem() (out []byte) {
 	data, err := x509.MarshalECPrivateKey(k.val)
 	if err != nil {
 		return
 	}
-	pemBytes := &bytes.Buffer{}
+	pemBytes := new(bytes.Buffer)
 	if err = pem.Encode(pemBytes, &pem.Block{
 		Type: EcdhPrivateKeyType, Bytes: data,
 	}); err != nil {
@@ -47,17 +54,53 @@ func (k *EcdhPrivateKey) Pem() (out []byte) {
 	return pemBytes.Bytes()
 }
 
-func GenerateEcdhKey(c ...elliptic.Curve) (out *EcdhPrivateKey, err error) {
-	curve := EcdhCurve
-	if len(c) > 0 && c[0] != nil {
-		curve = c[0]
+type EcdhPublicKey struct {
+	private *EcdhPrivateKey
+}
+
+func (k *EcdhPublicKey) Pem() (out []byte) {
+	pemBytes := new(bytes.Buffer)
+	if data, err := x509.MarshalPKIXPublicKey(k.private.val.PublicKey); err != nil {
+		return
+	} else if err := pem.Encode(pemBytes, &pem.Block{
+		Bytes: data,
+		Type:  EcdhPublicKeyType,
+	}); err != nil {
+		return nil
+	}
+	return pemBytes.Bytes()
+}
+
+// func (k *EcdhPublicKey) Base64() (out string) {
+// 	if data, err := x509.MarshalPKIXPublicKey(k.private.val.PublicKey); err != nil {
+// 		return base64.StdEncoding.EncodeToString(data)
+// 	}
+// 	return
+// }
+
+func (k *EcdhPublicKey) Base64() (out string) {
+	var pubkey *ecdsa.PublicKey = &k.private.val.PublicKey
+	byts := elliptic.Marshal(pubkey, pubkey.X, pubkey.Y)
+	return base64.StdEncoding.EncodeToString(byts)
+}
+
+func (k *EcdhPublicKey) Public() Key {
+	return k
+}
+
+type ecdhUtils struct{}
+
+func (ecdhUtils) Generate(curve ...elliptic.Curve) (out *EcdhPrivateKey, err error) {
+	_curve := EcdhCurve
+	if len(curve) > 0 && curve[0] != nil {
+		_curve = curve[0]
 	}
 	out = &EcdhPrivateKey{}
-	out.val, err = ecdsa.GenerateKey(curve, rand.Reader)
+	out.val, err = ecdsa.GenerateKey(_curve, rand.Reader)
 	return
 }
 
-func EcdhPemDecode(reader io.Reader) (out *EcdhPrivateKey, err error) {
+func (ecdhUtils) DecodePem(reader io.Reader) (out *EcdhPrivateKey, err error) {
 	var ok bool
 	var parsedKey interface{}
 	var privateKey *ecdsa.PrivateKey

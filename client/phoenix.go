@@ -1,10 +1,8 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
 
@@ -16,9 +14,7 @@ import (
 	"github.com/kod2ulz/interswitch-quickteller/sql/db"
 	dbi "github.com/kod2ulz/interswitch-quickteller/sql/db/interswitch"
 	"github.com/kod2ulz/interswitch-quickteller/stores"
-	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -115,65 +111,29 @@ func (p *Phoenix) loadIP() (err error) {
 func (p *Phoenix) loadRsaKey(ctx context.Context) (err error) {
 	path := fmt.Sprintf("%s/%s", p.conf.StorageFolder, p.conf.StorageRsaPath)
 	log := p.log.WithField("operation", "loadRsaKey")
-	log.Debug("loading from storage")
-	if err = p.minio.StreamObject(ctx, p.conf.StorageBucket, path, func(i int64, s string, reader io.ReadCloser) (e error) {
-		defer reader.Close()
-		p.rsaPrivate, e = RsaPemDecode(reader)
-		return
-	}); err == nil {
-		log.Info("loaded from storage")
-		return
-	} else if p.rsaPrivate, err = GenerateRsaKey(p.conf.RsaBitSize); err != nil {
-		err = errors.Wrap(err, "failed to generate rsa key")
-		log.WithError(err).Error("failed")
-		return
-	}
-	return p.savePemKeyToStorage(ctx, log, p.rsaPrivate.Pem(), path)
+	p.rsaPrivate, err = loadKey(ctx, log, Keys.Rsa, p.minio, p.conf.RsaBitSize, p.conf.StorageBucket, path)
+	return 
 }
 
 func (p *Phoenix) loadEcdhKey(ctx context.Context) (err error) {
 	path := fmt.Sprintf("%s/%s", p.conf.StorageFolder, p.conf.StorageEcdhPath)
 	log := p.log.WithField("operation", "loadEcdhKey")
-	log.Debug("loading from storage")
-	if err = p.minio.StreamObject(ctx, p.conf.StorageBucket, path, func(i int64, s string, reader io.ReadCloser) (e error) {
-		defer reader.Close()
-		p.ecdhPrivate, e = EcdhPemDecode(reader)
-		log.Info("loaded from storage")
-		return
-	}); err == nil {
-		return
-	} else if p.ecdhPrivate, err = GenerateEcdhKey(); err != nil {
-		err = errors.Wrap(err, "failed to generate ecdh key")
-		log.WithError(err).Error("failed")
-		return
-	}
-	return p.savePemKeyToStorage(ctx, log, p.ecdhPrivate.Pem(), path)
+	p.ecdhPrivate, err = loadKey(ctx, log, Keys.Ecdh, p.minio, nil, p.conf.StorageBucket, path)
+	return 
 }
 
-func (p *Phoenix) savePemKeyToStorage(ctx context.Context, log *logrus.Entry, keyData []byte, path string) (err error) {
-	size := int64(len(keyData))
-	opts := minio.PutObjectOptions{
-		ContentType: "application/x-pem-file",
-	}
-	if _, err = p.minio.PutObject(ctx, p.conf.StorageBucket, path, bytes.NewReader(keyData), size, opts); err != nil {
-		err = errors.Wrapf(err, "failed to upload generated %s key to minio", path)
-		log.WithError(err).Error("failed")
-	}
-	return
-}
-
-func (p *Phoenix) RsaPublic64() string {
+func (p *Phoenix) Rsa() Key {
 	if p.rsaPrivate == nil {
-		return ""
+		return nil
 	}
-	return p.rsaPrivate.PublicBase64()
+	return p.rsaPrivate
 }
 
-func (p *Phoenix) EcdhPublic64() string {
+func (p *Phoenix) Ecdh() Key {
 	if p.ecdhPrivate == nil {
-		return ""
+		return nil
 	}
-	return p.ecdhPrivate.PublicBase64()
+	return p.ecdhPrivate
 }
 
 type Request interface {
