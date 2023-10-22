@@ -13,7 +13,7 @@ const (
 	phoenixPostCompleteClientRegistration = "api/v1/phoenix/client/completeClientRegistration"
 )
 
-func (s *phoenix) ClientRegistration(ctx context.Context) (out any, er api.Error) {
+func (s *phoenix) ClientRegistration(ctx context.Context) (out ClientRegistrationResponse, er api.Error) {
 	var err error
 	var param ClientRegistrationRequest
 	if err = param.FromContext(ctx, &param); err != nil {
@@ -21,5 +21,5 @@ func (s *phoenix) ClientRegistration(ctx context.Context) (out any, er api.Error
 	} else if err = param.LoadPhoenixParams(s.client); err != nil {
 		return out, api.ServiceError(err)
 	} 
-	return client.RawRequest[ClientRegistrationRequest, any](s.client, ctx, param, http.MethodPost, phoenixPostClientRegistration)
+	return client.RawRequest[ClientRegistrationRequest, ClientRegistrationResponse](s.client, ctx, param, http.MethodPost, phoenixPostClientRegistration)
 }
