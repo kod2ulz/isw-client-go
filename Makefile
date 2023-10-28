@@ -11,11 +11,6 @@ db_driver              := ${ISW_DB_DRIVER}
 gostart_lib            := github.com/kod2ulz/gostart
 gostart_dir            := /code/kod2ulz/gostart
 db_connection_string   := "user=${ISW_DB_USERNAME} password=${ISW_DB_PASSWORD} host=${ISW_DB_HOST} port=${ISW_DB_PORT} dbname=${ISW_DB_DATABASE} sslmode=disable"
-docker_repo            := $(shell basename `git rev-parse --show-toplevel`)
-docker_tag             := $(shell git rev-parse HEAD)
-docker_tag_short       := $(shell git rev-parse --short HEAD)
-docker_service         := phoenix-client
-docker_org             := interswitch
 
 # migration
 migration-status: validate-db-env pre-goose

@@ -31,12 +31,12 @@ func (l phoenixLogger) getRequestID(ctx context.Context) (out uuid.UUID) {
 	return uuid.New()
 }
 
-func (l phoenixLogger) Request(ctx context.Context, method, url string, body any, headers map[string][]string) (call dbi.InterswitchApiCall, err error) {
+func (l phoenixLogger) Request(ctx context.Context, requestID uuid.UUID, method, url string, body any, headers map[string][]string) (call dbi.InterswitchApiCall, err error) {
 	var request pgtype.JSONB
 	data := l.jsonBody(body, headers, nil)
 	request.Set(data)
 	if call, err = l.px.db.LogApiRequest(ctx, dbi.LogApiRequestParams{
-		RequestID: l.getRequestID(ctx),
+		RequestID: requestID,
 		RemoteIp:  l.px.hostIP,
 		Method:    method,
 		Url:       url,
@@ -76,7 +76,7 @@ func (l phoenixLogger) payloadData(body any, headers map[string][]string, cookie
 	if cookies != nil && len(cookies) > 0 {
 		data["cookies"] = cookies
 	}
-	return 
+	return
 }
 
 func (l phoenixLogger) jsonBody(body any, headers map[string][]string, cookies []*http.Cookie) pgtype.JSONB {

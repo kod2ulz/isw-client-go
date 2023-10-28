@@ -7,6 +7,7 @@ type PhoenixConfig struct {
 	TerminalID      string
 	ClientID        string
 	ClientSecret    string
+	Timezone        string
 	Name            string
 	PhoneNumber     string
 	Email           string
@@ -26,6 +27,7 @@ func NewPhoenixClientConfig(prefix ...string) *PhoenixConfig {
 		ClientID:        env.MustGet("ID").String(),
 		TerminalID:      env.MustGet("TERMINAL_ID").String(),
 		ClientSecret:    env.MustGet("SECRET").String(),
+		Timezone:        env.Get("TIMEZONE", "Africa/Kampala").String(),
 		Email:           env.Get("EMAIL", "ugandan@mail.ug").String(),
 		Name:            env.Get("NAME", "NDI MUNAUGANDA").String(),
 		NIN:             env.Get("NIN", "CM8101234568NH").String(),

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/kod2ulz/gostart/api"
 	"github.com/kod2ulz/interswitch-quickteller/client"
@@ -23,15 +25,15 @@ type ClientRegistrationRequest struct {
 	api.RequestModal[ClientRegistrationRequest]
 }
 
-func (r *ClientRegistrationRequest) LoadRequestDefaults() (err error) {
+func (r *ClientRegistrationRequest) LoadRequestDefaults(ctx context.Context) (err error) {
 	if r.RequestReference == "" {
 		r.RequestReference = uuid.New().String()
 	}
 	return
 }
 
-func (r *ClientRegistrationRequest) LoadPhoenixParams(phoenix *client.Phoenix) (err error) {
-	if err = r.LoadRequestDefaults(); err != nil {
+func (r *ClientRegistrationRequest) LoadPhoenixParams(ctx context.Context, phoenix *client.Phoenix) (err error) {
+	if err = r.LoadRequestDefaults(ctx); err != nil {
 		return
 	}
 	conf := phoenix.Config()
