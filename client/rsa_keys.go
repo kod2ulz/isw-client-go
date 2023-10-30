@@ -55,12 +55,12 @@ func (k *RsaPrivateKey) Verify(message, signature []byte) (err error) {
 	return rsa.VerifyPKCS1v15(&k.val.PublicKey, crypto.SHA256, hashed[:], signature)
 }
 
-func (k *RsaPrivateKey) Encrypt(_ any, message []byte) (out []byte, err error) {
+func (k *RsaPrivateKey) Encrypt(_hash hash.Hash, message []byte) (out []byte, err error) {
 	return out, errors.Errorf("not applicable")
 }
 
-func (k *RsaPrivateKey) Decrypt(_hash any, message []byte) (out []byte, err error) {
-	return rsa.DecryptOAEP(_hash.(hash.Hash), rand.Reader, k.val, message, nil)
+func (k *RsaPrivateKey) Decrypt(_hash hash.Hash, message []byte) (out []byte, err error) {
+	return rsa.DecryptOAEP(_hash, rand.Reader, k.val, message, nil)
 }
 
 type RsaPublicKey struct {
@@ -96,11 +96,11 @@ func (k *RsaPublicKey) Verify(message, signature []byte) (err error) {
 	return errors.Errorf("not applicable")
 }
 
-func (k *RsaPublicKey) Encrypt(_hash any, message []byte) (out []byte, err error) {
-	return rsa.EncryptOAEP(_hash.(hash.Hash), rand.Reader, &k.private.val.PublicKey, message, nil)
+func (k *RsaPublicKey) Encrypt(_hash hash.Hash, message []byte) (out []byte, err error) {
+	return rsa.EncryptOAEP(_hash, rand.Reader, &k.private.val.PublicKey, message, nil)
 }
 
-func (k *RsaPublicKey) Decrypt(_hash any, message []byte) (out []byte, err error) {
+func (k *RsaPublicKey) Decrypt(_hash hash.Hash, message []byte) (out []byte, err error) {
 	return out, errors.Errorf("not applicable")
 }
 
