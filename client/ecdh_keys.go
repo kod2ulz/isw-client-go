@@ -80,12 +80,13 @@ func (k *EcdhPrivateKey) SetTheirKey(publicKey *EcdhPublicKey) (err error) {
 }
 
 func (k *EcdhPrivateKey) SharedSecret() ([]byte, error) {
-	if k.theirs == nil {
+	if len(k.secret) > 0 {
+		return k.secret, nil
+	} else if k.theirs == nil {
 		return nil, errors.Errorf("their public key required to generate shared secret. call %T.SetTheirKey(k)", k)
-	} else if len(k.secret) == 0 {
-		x, _ := k.theirs.Curve.ScalarMult(k.theirs.X, k.theirs.Y, k.val.D.Bytes())
-		k.secret = x.Bytes()
 	}
+	x, _ := k.theirs.Curve.ScalarMult(k.theirs.X, k.theirs.Y, k.val.D.Bytes())
+	k.secret = x.Bytes()
 	return k.secret, nil
 }
 
