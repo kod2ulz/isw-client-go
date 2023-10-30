@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"crypto"
 	"encoding/base64"
 	"fmt"
 	"net"
@@ -192,7 +191,7 @@ func (p *Phoenix) auth(requestId uuid.UUID, method, _url, authToken string, para
 
 	if p.rsaPrivate == nil {
 		return out, errors.Errorf("required rsa private key not set")
-	} else if signature, err = p.rsaPrivate.Sign(crypto.SHA256, signCipher); err != nil {
+	} else if signature, err = p.rsaPrivate.Sign([]byte(signCipher)); err != nil {
 		return out, errors.Wrapf(err, "failed to generate signature of cipler using SHA256withRSA encryption")
 	}
 	out.Add(HEADER_SIGNATURE, base64.StdEncoding.EncodeToString(signature))
@@ -234,16 +233,16 @@ func RawRequest[P Request, R any](p *Phoenix, ctx context.Context, req P, endpoi
 	if res = client.Request(ctx, endpoint.Method, endpoint.Uri); res.HasError() {
 		p.log.Response(ctx, call.RequestID, res.Code(), res.Error, res.Headers(), res.Cookies())
 		return out, res.Error
-	} else if err = res.ParseDataTo(&resData); err != nil {
+	}
+	p.log.Response(ctx, call.RequestID, res.Code(), res.Data, res.Headers(), res.Cookies())
+	if err = res.ParseDataTo(&resData); err != nil {
 		return out, serviceError[R](err, "failed to parse %T to %T", res.Data, out)
 	}
-	if _, err = p.log.Response(ctx, call.RequestID, res.Code(), res.Data, res.Headers(), res.Cookies()); err != nil {
-		p.log.WithError(err).WithField("res", res).Error("failed to log response to db")
-	}
-	//todo: read response for errors before setting this
+	//todo: read response for errors apro process them before setting this
 	utils.StructCopy(resData, &out)
 	return
 }
+
 
 func serviceError[T any](err error, message string, args ...interface{}) api.Error {
 	return api.GeneralError[T](errors.Wrapf(err, message, args...)).

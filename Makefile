@@ -89,6 +89,13 @@ ifndef ISW_DB_PORT
 	$(error ISW_DB_PORT is undefined. please define ISW_DB_PORT=<DATABASE_PORT>)
 endif
 
+
+
+validate-package:
+ifndef package
+	$(error package is undefined. please specify a package as package=<package>)
+endif
+
 # project dev workflow
 packages:
 	go mod download
@@ -98,6 +105,12 @@ tidy:
 
 run: validate-env-file
 	$(shell cat ${dir}/.env | tr -d ' ' | xargs -L 1) go run main.go
+
+test-gen: validate-package
+	cd $(package) && ginkgo generate $(package)
+
+test-init:
+	ginkgo bootstrap
 
 test:
 	go test ./...

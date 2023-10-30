@@ -40,8 +40,8 @@ func WithPhoenixClient(client *client.Phoenix) PhoenixApiOption {
 
 type phoenix struct {
 	client *client.Phoenix
-	log    *logr.Logger
 	ctx    context.Context
+	log    *logr.Logger
 }
 
 func Phoenix(ctx context.Context, log *logr.Logger, opts ...PhoenixApiOption) (out *phoenix, err error) {
@@ -68,6 +68,7 @@ func getRequestID(ctx context.Context) (out uuid.UUID) {
 			out = uuid.New()
 		}
 	}
+
 	if out == uuid.Nil {
 		out = uuid.New()
 	}

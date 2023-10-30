@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"hash"
 	"io"
 
 	"github.com/pkg/errors"
@@ -44,13 +45,22 @@ func (k *RsaPrivateKey) Pem() (out []byte) {
 	return pemBytes.Bytes()
 }
 
-func (k *RsaPrivateKey) Sign(hash crypto.Hash, message string) (out []byte, err error) {
-	hashed := sha256.Sum256([]byte(message))
-	signature, err := rsa.SignPKCS1v15(rand.Reader, k.val, crypto.SHA256, hashed[:])
-	if err != nil {
-		return nil, err
-	}
-	return signature, nil
+func (k *RsaPrivateKey) Sign(message []byte) (out []byte, err error) {
+	hashed := sha256.Sum256(message)
+	return rsa.SignPKCS1v15(rand.Reader, k.val, crypto.SHA256, hashed[:])
+}
+
+func (k *RsaPrivateKey) Verify(message, signature []byte) (err error) {
+	hashed := sha256.Sum256(message)
+	return rsa.VerifyPKCS1v15(&k.val.PublicKey, crypto.SHA256, hashed[:], signature)
+}
+
+func (k *RsaPrivateKey) Encrypt(_ any, message []byte) (out []byte, err error) {
+	return out, errors.Errorf("not applicable")
+}
+
+func (k *RsaPrivateKey) Decrypt(_hash any, message []byte) (out []byte, err error) {
+	return rsa.DecryptOAEP(_hash.(hash.Hash), rand.Reader, k.val, message, nil)
 }
 
 type RsaPublicKey struct {
@@ -77,13 +87,30 @@ func (k *RsaPublicKey) Public() Key {
 	return k
 }
 
+func (k *RsaPublicKey) Sign(_hash any, message []byte) (out []byte, err error) {
+	return out, errors.Errorf("not applicable")
+}
+
+
+func (k *RsaPublicKey) Verify(message, signature []byte) (err error) {
+	return errors.Errorf("not applicable")
+}
+
+func (k *RsaPublicKey) Encrypt(_hash any, message []byte) (out []byte, err error) {
+	return rsa.EncryptOAEP(_hash.(hash.Hash), rand.Reader, &k.private.val.PublicKey, message, nil)
+}
+
+func (k *RsaPublicKey) Decrypt(_hash any, message []byte) (out []byte, err error) {
+	return out, errors.Errorf("not applicable")
+}
+
 type rsaUtils struct{}
 
 func (rsaUtils) Generate(bitSize ...int) (out *RsaPrivateKey, err error) {
 	_bitSize := RsaMinBits
 	if len(bitSize) > 0 {
 		if bitSize[0] < RsaMinBits {
-			return nil, errors.Errorf("insufficient rsa bit size %d", bitSize)
+			return nil, errors.Errorf("inadequate rsa bit size %d", bitSize)
 		} else {
 			_bitSize = bitSize[0]
 		}
